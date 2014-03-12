@@ -27,6 +27,10 @@ socket.sockets.on('connection', function(client){
     sys.log('Message received: '+m);
   });
 
+  client.emit('message', {
+    msg: 'First Connect'
+  })
+
   client.on('disconnect', function(){
     connected = false;
     count--;
@@ -35,7 +39,7 @@ socket.sockets.on('connection', function(client){
   client.on('hello', function() {
   	//client.send('haha'); //not obj
   	client.emit('message', {
-  		name: 'sunny'
+  		msg: 'sunny'
   	})
   })
 });
