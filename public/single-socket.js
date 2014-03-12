@@ -6,7 +6,7 @@
 
 		PREFIX = 'single-socket-',
 
-		ID 	   = PREFIX + 'id',
+		ID     = PREFIX + 'id',
 		EVENT  = PREFIX + 'event',
 		UPDATE = PREFIX + 'update';
 
@@ -25,7 +25,7 @@
 
 		getId: function() {
 			var id = localStorage.getItem(ID);
-			if(id == null) {
+			if (id == null) {
 				isActive = true;
 				localStorage.setItem(ID, 0);
 				this.cleanup();
@@ -41,6 +41,7 @@
 		 * @return {[type]} [description]
 		 */
 		cleanup: function() {
+			localStorage.removeItem(EVENT);
 			localStorage.removeItem(UPDATE);
 		}
 	};
@@ -55,6 +56,9 @@
 		_handler: function(eventName, data, fn) {
 			typeof fn === 'function' && fn.call(null, data);
 			localStorage.setItem(UPDATE, JSON.stringify(data));
+			/**
+			 * 如果设置的值相同是不会触发 storage 事件滴~~
+			 */
 			localStorage.setItem(EVENT, '');
 			localStorage.setItem(EVENT, eventName);
 		},
@@ -74,21 +78,20 @@
 
 	function FakeSocket() {
 		window.addEventListener('storage', this._handler.bind(this));
+		this._events = {};
 	};
 
 	FakeSocket.prototype = {
 		constructor: FakeSocket,
 
-		_events: {},
-
 		_handler: function(e) {
 			var key = e.key,
 				events,
 				data;
-			if(key === EVENT && e.newValue !== '') {
+			if (key === EVENT && e.newValue !== '') {
 				events = this._events[localStorage.getItem(EVENT)];
 				data = JSON.parse(localStorage.getItem(UPDATE));
-				for(var i = 0, len = events.length; i < len; i++) {
+				for (var i = 0, len = events.length; i < len; i++) {
 					events[i](data);
 				}
 			}
@@ -96,14 +99,13 @@
 
 		on: function(eventName, fn) {
 			var events = this._events;
-			if(!events[eventName]) {
+			if (!events[eventName]) {
 				events[eventName] = [];
 			}
 			events[eventName].push(fn);
 		},
 
-		emit: function(eventName) {
-		}
+		emit: function(eventName) {}
 	};
 
 	window.SingleSocket = SingleSocket;

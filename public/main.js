@@ -11,6 +11,7 @@ socket.on('ok', function(m){
 socket.on('message', function(data) {
 	console.log(data);
 	result.innerHTML += data.msg + '<br>';
+	document.title = data.msg + parseInt(Math.random() * 100);
 })
 
 function hello() {
