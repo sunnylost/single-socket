@@ -12,19 +12,24 @@
 		updateTimeoutId,
 
 		isActive = false,
+		gid,
+
+		retObj,
+
+		realSocketFns = ['_handler', '_emitHandler', 'emit', 'on'],
 
 		PREFIX = 'single-socket-',
 
 		ID     = PREFIX + 'id',
+		BACKUP = PREFIX + 'backup',
 		EVENT  = PREFIX + 'event',
 		UPDATE = PREFIX + 'update',
-		TRIGGER_EVENT    = PREFIX + '-trigger-event',
 		LAST_ACTIVE_TIME = PREFIX + 'last-active-time',
-		TRIGGER_EVENT_PARAMS = TRIGGER_EVENT + '-params';
+		TRIGGER_EVENT_PARAMS = PREFIX + '-trigger-event-params';
 
 	var SingleSocket = {
 		connect: function() {
-			return new (this.hasConnect() ? FakeSocket : RealSocket);
+			return (retObj = new (this.hasConnect() ? FakeSocket : RealSocket));
 		},
 
 		/**
@@ -46,11 +51,12 @@
 		},
 
 		/**
-		 * 断开连接
+		 * TODO:断开连接
 		 * @return {[type]} [description]
 		 */
 		disconnect: function() {
-			this.cleanup(true);
+			socket && socket.disconnect();
+			this.removeFromBackups();
 		},
 
 		/**
@@ -62,24 +68,60 @@
 		},
 
 		getId: function() {
-			var id = localStorage.getItem(ID);
+			var id = localStorage.getItem(ID),
+				backups;
 			if (id == null) {
-				isActive = true;
-				localStorage.setItem(ID, 0);
 				this.cleanup();
+				localStorage.removeItem(BACKUP);
+
+				isActive = true;
+				gid = 1;
+				localStorage.setItem(ID, gid);
 				return null;
 			} else {
-				localStorage.setItem(ID, ++id);
+				gid = ++id;
+				localStorage.setItem(ID, gid);
+				backups = JSON.parse(localStorage.getItem(BACKUP)) || {};
+				backups[gid] = 1;
+				localStorage.setItem(BACKUP, JSON.stringify(backups));
 			}
 			return id;
 		},
 
 		/**
-		 * 重新建立连接
+		 * TODO:重新建立连接
 		 * @return {[type]} [description]
 		 */
 		reconnect: function() {
 			this.cleanup(true);
+			var backups = JSON.parse(localStorage.getItem(BACKUP)),
+				proto;
+			for(var i in backups) {
+				i = +i;
+				if(typeof i === 'number' && i === i) {
+					localStorage.setItem(ID, i);
+					if(gid === i) {
+						retObj.clean();
+						proto = RealSocket.prototype;
+						realSocketFns.forEach(function(n) {
+							retObj[n] = proto[n];
+						})
+						RealSocket.call(retObj);
+						this.removeFromBackups();
+					}
+					return;
+				}
+			}
+		},
+
+		/**
+		 * 将 gid 从备选 id 中删掉
+		 * @return {[type]} [description]
+		 */
+		removeFromBackups: function() {
+			var backups = JSON.parse(localStorage.getItem(BACKUP));
+			delete backups[gid];
+			localStorage.setItem(BACKUP, JSON.stringify(backups));
 		},
 
 		/**
@@ -95,7 +137,7 @@
 		},
 
 		/**
-		 * 清理之前保存的数据
+		 * 清理之前保存的数据及定时器
 		 * @param  {[type]} flag 是否删除 ID
 		 * @return {[type]}      [description]
 		 */
@@ -103,8 +145,11 @@
 			flag && localStorage.removeItem(ID);
 			localStorage.removeItem(EVENT);
 			localStorage.removeItem(UPDATE);
-			localStorage.removeItem(TRIGGER_EVENT);
 			localStorage.removeItem(LAST_ACTIVE_TIME);
+			localStorage.removeItem(TRIGGER_EVENT_PARAMS);
+
+			clearTimeout(checkTimeoutId);
+			clearTimeout(updateTimeoutId);
 		}
 	};
 
@@ -116,8 +161,6 @@
 	}
 
 	RealSocket.prototype = {
-		constructor: RealSocket,
-
 		_handler: function(eventName, data, fn) {
 			typeof fn === 'function' && fn.call(null, data);
 			localStorage.setItem(UPDATE, JSON.stringify(data));
@@ -131,7 +174,7 @@
 		_emitHandler: function(e) {
 			var key = e.key;
 
-			if(key === TRIGGER_EVENT && e.newValue !== '') {
+			if(key === TRIGGER_EVENT_PARAMS && e.newValue !== '') {
 				this.emit.apply(this, JSON.parse(localStorage.getItem(TRIGGER_EVENT_PARAMS)));
 			}
 		},
@@ -149,14 +192,12 @@
 	};
 
 	function FakeSocket() {
-		window.addEventListener('storage', this._handler.bind(this));
+		window.addEventListener('storage', (this._fn = this._handler.bind(this)));
 		this._events = {};
 		SingleSocket.checkAlive();
 	};
 
 	FakeSocket.prototype = {
-		constructor: FakeSocket,
-
 		_handler: function(e) {
 			var key = e.key,
 				events,
@@ -182,16 +223,19 @@
 		},
 
 		emit: function(eventName) {
+			localStorage.setItem(TRIGGER_EVENT_PARAMS, '');
 			localStorage.setItem(TRIGGER_EVENT_PARAMS, JSON.stringify([].slice.call(arguments, 0)));
-			localStorage.setItem(TRIGGER_EVENT, '');
-			localStorage.setItem(TRIGGER_EVENT, eventName);
+		},
+
+		clean: function() {
+			window.removeEventListener('storage', this._fn);
 		}
 	};
 
 	/**
 	 * 页面刷新时，如果当前页面有连接，那么断开
 	 */
-	window.addEventListener('unload', function() {
+	window.addEventListener('beforeunload', function() {
 		if(isActive) {
 			SingleSocket.disconnect();
 		}
