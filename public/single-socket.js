@@ -17,8 +17,10 @@
 
 		ID     = PREFIX + 'id',
 		EVENT  = PREFIX + 'event',
-		UPDATE = PREFIX + 'update'
-		LAST_ACTIVE_TIME = PREFIX + 'last-active-time';
+		UPDATE = PREFIX + 'update',
+		TRIGGER_EVENT    = PREFIX + '-trigger-event',
+		LAST_ACTIVE_TIME = PREFIX + 'last-active-time',
+		TRIGGER_EVENT_PARAMS = TRIGGER_EVENT + '-params';
 
 	var SingleSocket = {
 		connect: function() {
@@ -101,6 +103,7 @@
 			flag && localStorage.removeItem(ID);
 			localStorage.removeItem(EVENT);
 			localStorage.removeItem(UPDATE);
+			localStorage.removeItem(TRIGGER_EVENT);
 			localStorage.removeItem(LAST_ACTIVE_TIME);
 		}
 	};
@@ -109,6 +112,7 @@
 		if(socket) throw new Exception('There\'s already exist one connection!');
 		socket = io.connect();
 		SingleSocket.update();
+		window.addEventListener('storage', this._emitHandler.bind(this));
 	}
 
 	RealSocket.prototype = {
@@ -122,6 +126,14 @@
 			 */
 			localStorage.setItem(EVENT, '');
 			localStorage.setItem(EVENT, eventName);
+		},
+
+		_emitHandler: function(e) {
+			var key = e.key;
+
+			if(key === TRIGGER_EVENT && e.newValue !== '') {
+				this.emit.apply(this, JSON.parse(localStorage.getItem(TRIGGER_EVENT_PARAMS)));
+			}
 		},
 
 		on: function(eventName, fn) {
@@ -169,7 +181,11 @@
 			events[eventName].push(fn);
 		},
 
-		emit: function(eventName) {}
+		emit: function(eventName) {
+			localStorage.setItem(TRIGGER_EVENT_PARAMS, JSON.stringify([].slice.call(arguments, 0)));
+			localStorage.setItem(TRIGGER_EVENT, '');
+			localStorage.setItem(TRIGGER_EVENT, eventName);
+		}
 	};
 
 	/**
