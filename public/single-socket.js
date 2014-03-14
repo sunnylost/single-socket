@@ -21,6 +21,7 @@
 		PREFIX = 'single-socket-',
 
 		ID     = PREFIX + 'id',
+		CURID  = PREFIX + 'cur-id',
 		BACKUP = PREFIX + 'backup',
 		EVENT  = PREFIX + 'event',
 		UPDATE = PREFIX + 'update',
@@ -29,7 +30,7 @@
 
 	var SingleSocket = {
 		connect: function() {
-			return (retObj = new (this.hasConnect() ? FakeSocket : RealSocket));
+			return retObj = new (this.hasConnect() ? FakeSocket : RealSocket);
 		},
 
 		/**
@@ -43,11 +44,34 @@
 				var lastTime = +localStorage.getItem(LAST_ACTIVE_TIME);
 				if(lastTime !== lastTime || (Date.now() - new Date(lastTime) >= 10000)) {
 					console.log("The connection is cut out!");
-					_this.reconnect();
+					var curId = localStorage.getItem(CURID);
+					if(curId) {
+						_this.removeFromBackups(curId);
+						_this.reconnect();	
+					} else {
+						_this.converse();						
+					}
 				} else {
 					_this.checkAlive();
 				}
 			}, 5000)
+		},
+
+		/**
+		 * 将 FakeSocket 转变为 RealSocket
+		 * @return {[type]}     [description]
+		 */
+		converse: function() {
+			isActive = true;
+			socket = null;
+			var proto = RealSocket.prototype;
+			retObj.clean();
+			realSocketFns.forEach(function(n) {
+				retObj[n] = proto[n];
+			})
+			RealSocket.call(retObj);
+			localStorage.setItem(CURID, gid);
+			this.removeFromBackups(gid);
 		},
 
 		/**
@@ -56,7 +80,7 @@
 		 */
 		disconnect: function() {
 			socket && socket.disconnect();
-			this.removeFromBackups();
+			this.removeFromBackups(gid);
 		},
 
 		/**
@@ -77,6 +101,8 @@
 				isActive = true;
 				gid = 1;
 				localStorage.setItem(ID, gid);
+				localStorage.setItem(CURID, gid);
+				console.log("GID = " + gid);
 				return null;
 			} else {
 				gid = ++id;
@@ -85,7 +111,8 @@
 				backups[gid] = 1;
 				localStorage.setItem(BACKUP, JSON.stringify(backups));
 			}
-			return id;
+			console.log("GID = " + gid);
+			return gid;
 		},
 
 		/**
@@ -99,15 +126,11 @@
 			for(var i in backups) {
 				i = +i;
 				if(typeof i === 'number' && i === i) {
-					localStorage.setItem(ID, i);
+					localStorage.setItem(CURID, i);
 					if(gid === i) {
-						retObj.clean();
-						proto = RealSocket.prototype;
-						realSocketFns.forEach(function(n) {
-							retObj[n] = proto[n];
-						})
-						RealSocket.call(retObj);
-						this.removeFromBackups();
+						this.converse();
+					} else {
+						localStorage.setItem(CURID, i);
 					}
 					return;
 				}
@@ -115,12 +138,12 @@
 		},
 
 		/**
-		 * 将 gid 从备选 id 中删掉
+		 * 将 i 从备选 id 中删掉
 		 * @return {[type]} [description]
 		 */
-		removeFromBackups: function() {
+		removeFromBackups: function(i) {
 			var backups = JSON.parse(localStorage.getItem(BACKUP));
-			delete backups[gid];
+			delete backups[i];
 			localStorage.setItem(BACKUP, JSON.stringify(backups));
 		},
 
