@@ -1,46 +1,46 @@
-var http    = require('http'), 
-    io      = require('socket.io'),
-    sys     = require('sys'),
-    express = require('express');
-
-var port = 8080;
+var http         = require( 'http' ),
+    io           = require( 'socket.io' ),
+    util         = require( 'util' ),
+    express      = require( 'express' ),
+    errorhandler = require( 'errorhandler' ),
+    port         = 8080,
+    count        = 0,
+    app, server, socket
 
 //Upgraded for express 3.x
-var app = express();
-app.use(express.static(__dirname + '/public'));
-app.use(express.errorHandler({showStack: true, dumpExceptions: true}));
+app = express()
+
+util.log( 'current path: ', __dirname )
+app.use( express.static( __dirname ) )
+app.use( errorhandler( { showStack: true, dumpExceptions: true } ) )
 
 //socket requires a http server
-var socket = io.listen(http.createServer(app).listen(port));
-sys.log('Started server on http://localhost:' + port + '/')
+server = http.createServer( app ).listen( port )
+socket = io( server )
+util.log( 'Started server on http://localhost:' + port + '/' )
 
+socket.on( 'connection', function( client ) {
+    var connected = true
 
-var count = 0;
+    util.log( '====================Connect client num:' + ++count )
 
-socket.sockets.on('connection', function(client){
-  var connected = true;
+    //On receiving the message event - echo to console
+    client.on( 'message', function( m ) {
+        util.log( 'Message received: ' + m )
+    } )
 
-  sys.log('====================Connect client num:' + ++count)
+    client.emit( 'message', {
+        msg: 'First Connect'
+    } )
 
-  //On receiving the message event - echo to console
-  client.on('message', function(m){
-    sys.log('Message received: '+m);
-  });
+    client.on( 'disconnect', function() {
+        connected = false
+        count--
+    } )
 
-  client.emit('message', {
-    msg: 'First Connect'
-  })
-
-  client.on('disconnect', function(){
-    connected = false;
-    count--;
-  });
-
-  client.on('hello', function() {
-  	//client.send('haha'); //not obj
-  	client.emit('message', {
-  		msg: 'sunny'
-  	})
-  })
-});
-
+    client.on( 'hello', function() {
+        client.emit( 'message', {
+            msg: 'sunny'
+        } )
+    } )
+} )

@@ -2,9 +2,17 @@
   "name": "single-socket",
   "version": "0.0.1",
   "description": "socket reuse",
-  "dependencies": {
-    "express": ">=3.0.0rc2",
-    "socket.io": ">= 0.9.9"
+  "scripts": {
+    "start": "node ./server.js"
   },
-  "engine": "node 0.10.25"
+  "dependencies": {
+    "express": "~4.13.1",
+    "errorhandler": "~1.4.1",
+    "socket.io": "~1.3.5"
+  },
+  "devDependencies": {
+    "gulp": "~3.9.0",
+    "gulp-babel": "~5.1.0",
+    "gulp-watch": "~4.2.4"
+  }
 }
