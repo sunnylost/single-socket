@@ -40,7 +40,7 @@ socket.on( 'connection', function( client ) {
 
     client.on( 'hello', function() {
         client.emit( 'message', {
-            msg: 'sunny'
+            msg: 'sunny' + Math.random()
         } )
     } )
 } )
