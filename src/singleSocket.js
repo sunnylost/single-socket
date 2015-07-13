@@ -19,7 +19,7 @@ let global            = window,
     $events           = Symbol( 'events' ),
     $fn               = Symbol( 'fn' ),
     $handler          = Symbol( 'handler' ),
-    $id               = Symbol( 'ID' ),
+    $id               = Symbol( 'id' ),
     $isReal           = Symbol( 'isReal' ),
     $recommend        = Symbol( 'recommend' ),
     $timeoutID        = Symbol( 'timeoutID' ),
@@ -163,17 +163,13 @@ class FakeSocket {
     [ $recommend ] () {
         if ( !LS.getItem( RECOMMEND_ID ) ) {
             LS.setItem( RECOMMEND_ID, this[ $id ] )
-            setTimeout( this
-        ::
-            this[ $upgrade ], CHECK_RATE
-        )
+            setTimeout( this::this[ $upgrade ], CHECK_RATE )
         } else {
             this[ $check ]()
         }
     }
 
     [ $upgrade ]() {
-        console.log( 'upgrade ', this[ $id ] )
         this[ $clean ]()
 
         let newConnectInstance = new RealSocket()
@@ -187,7 +183,6 @@ class FakeSocket {
 
         for ( let key in connectInstance[ $events ] ) {
             connectInstance[ $events ][ key ].forEach( fn => newConnectInstance.on( key, fn ) )
-
         }
     }
 }
@@ -197,7 +192,6 @@ class SingleSocket {
         let hasConnect  = SingleSocket.hasConnect()
         connectInstance = new ( hasConnect ? FakeSocket : RealSocket )
         this.assign( connectInstance )
-        console.log( connectInstance[ $id ] )
 
         if ( isRealConnect ) {
             SingleSocket.update()
@@ -226,10 +220,9 @@ class SingleSocket {
      * 更新真实连接最后的活动时间
      */
     static update() {
-        clearTimeout( SingleSocket._timeoutid )
+        clearTimeout( SingleSocket[ $timeoutID ] )
         LS.setItem( LAST_ACTIVE_TIME, Date.now() )
-
-        SingleSocket._timeoutid = setTimeout( () => SingleSocket.update(), UPDATE_RATE )
+        SingleSocket[ $timeoutID ] = setTimeout( () => SingleSocket.update(), UPDATE_RATE )
     }
 
     static disconnect() {
@@ -261,8 +254,6 @@ class SingleSocket {
     }
 }
 
-window.addEventListener( UNLOAD, () => {
-    SingleSocket.disconnect()
-} )
+window.addEventListener( UNLOAD, SingleSocket.disconnect )
 
 export default SingleSocket
