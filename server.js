@@ -3,7 +3,7 @@ var http         = require( 'http' ),
     util         = require( 'util' ),
     express      = require( 'express' ),
     errorhandler = require( 'errorhandler' ),
-    port         = 8080,
+    port         = 12345,
     count        = 0,
     app, server, socket
 

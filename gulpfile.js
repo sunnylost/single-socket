@@ -1,8 +1,9 @@
-var fs      = require( 'fs' ),
-    gulp    = require( 'gulp' ),
-    babel   = require( 'gulp-babel' ),
+var fs         = require( 'fs' ),
+    gulp       = require( 'gulp' ),
+    babel      = require( 'gulp-babel' ),
+    sourcemaps = require( 'gulp-sourcemaps' ),
 
-    paths   = {
+    paths      = {
         src: 'src/*.js',
 
         build: 'build/',
@@ -10,15 +11,16 @@ var fs      = require( 'fs' ),
         dist: 'dist/'
     },
 
-    options = {
-        sourceMaps: 'inline',
+    options    = {
         stage: 0,
         modules: 'umd'
     }
 
 gulp.task( 'scripts', function() {
     gulp.src( paths.src )
+        .pipe( sourcemaps.init() )
         .pipe( babel( options ) )
+        .pipe( sourcemaps.write( '.' ) )
         .pipe( gulp.dest( paths.build ) )
 } )
 
